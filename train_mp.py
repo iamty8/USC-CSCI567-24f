@@ -18,8 +18,6 @@ from util.cluster_and_log_utils import log_accs_from_preds
 from config import exp_root
 from model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups
 
-from datetime import timedelta
-
 
 def get_parser():
     parser = argparse.ArgumentParser(description='cluster', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -52,8 +50,6 @@ def get_parser():
     parser.add_argument('--fp16', action='store_true', default=False)
     parser.add_argument('--print_freq', default=10, type=int)
     parser.add_argument('--exp_name', default=None, type=str)
-
-    parser.add_argument("--local_rank", type=int, help="Local device rank for distributed training")
 
     # ----------------------
     # INIT
@@ -118,7 +114,7 @@ def main(args):
                                                                                          train_transform,
                                                                                          test_transform,
                                                                                          args)
-    if dist.get_rank() == 0: args.logger.info('Dataset loaded')
+
     # --------------------
     # SAMPLER
     # Sampler which balances labelled and unlabelled examples in each batch
@@ -129,7 +125,6 @@ def main(args):
     sample_weights = torch.DoubleTensor(sample_weights)
     train_sampler = DistributedWeightedSampler(train_dataset, sample_weights, num_samples=len(train_dataset))
     unlabelled_train_sampler = torch.utils.data.distributed.DistributedSampler(unlabelled_train_examples_test)
-    if dist.get_rank() == 0: args.logger.info('Sampler set')
     # test_sampler = torch.utils.data.distributed.DistributedSampler(test_dataset)
     # --------------------
     # DATALOADERS
@@ -140,16 +135,13 @@ def main(args):
                                         shuffle=False, sampler=unlabelled_train_sampler, pin_memory=False)
     # test_loader = DataLoader(test_dataset, num_workers=args.num_workers, batch_size=256, 
     #                                   shuffle=False, sampler=test_sampler, pin_memory=False)
-    if dist.get_rank() == 0: args.logger.info('Dataloader set')
+
     # ----------------------
     # PROJECTION HEAD
     # ----------------------
     projector = DINOHead(in_dim=args.feat_dim, out_dim=args.mlp_out_dim, nlayers=args.num_mlp_layers)
-    print(f"Moving model to GPU {args.local_rank}", flush=True)
-    model = nn.Sequential(backbone, projector).to(args.local_rank)
-    print(f"Wrapping model in DistributedDataParallel on GPU {args.local_rank}", flush=True)
+    model = nn.Sequential(backbone, projector).cuda()
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank])
-    if dist.get_rank() == 0: args.logger.info('model set')
 
     params_groups = get_params_groups(model)
     optimizer = torch.optim.SGD(
@@ -184,14 +176,10 @@ def main(args):
     # best_train_acc_ubl = 0 
     # best_train_acc_all = 0
 
-    if dist.get_rank() == 0: args.logger.info('begin training')
-
     for epoch in range(args.epochs):
-        print('begin epoch')
         train_sampler.set_epoch(epoch)
-        print('sampler epoch set')
         train(model, train_loader, optimizer, fp16_scaler, exp_lr_scheduler, cluster_criterion, epoch, args)
-        print('epoch trained')
+
         unlabelled_train_sampler.set_epoch(epoch)
         # test_sampler.set_epoch(epoch)
         if dist.get_rank() == 0:
@@ -235,6 +223,7 @@ def main(args):
 
 def train(student, train_loader, optimizer, scaler, scheduler, cluster_criterion, epoch, args):
     loss_record = AverageMeter()
+
     student.train()
     for batch_idx, batch in enumerate(train_loader):
         images, class_labels, uq_idxs, mask_lab = batch
@@ -328,8 +317,6 @@ if __name__ == '__main__':
     torch.cuda.set_device(args.local_rank)
     torch.distributed.init_process_group(backend='nccl', init_method='env://')
     cudnn.benchmark = True
-
-    print(f"Global Rank: {os.environ['RANK']}, Local Rank: {os.environ['LOCAL_RANK']}, World Size: {os.environ['WORLD_SIZE']}")
 
     if dist.get_rank() == 0:
         init_experiment(args, runner_name=['simgcd'])

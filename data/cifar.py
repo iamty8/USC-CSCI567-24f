@@ -4,6 +4,10 @@ import numpy as np
 
 from data.data_utils import subsample_instances
 from config import cifar_10_root, cifar_100_root
+# from data_utils import subsample_instances
+# cifar_100_root = '../datasets/cifar100'
+
+
 
 
 class CustomCIFAR10(CIFAR10):
@@ -100,7 +104,7 @@ def get_cifar_10_datasets(train_transform, test_transform, train_classes=(0, 1, 
     np.random.seed(seed)
 
     # Init entire training set
-    whole_training_set = CustomCIFAR10(root=cifar_10_root, transform=train_transform, train=True)
+    whole_training_set = CustomCIFAR10(root=cifar_10_root, transform=train_transform, train=True, download=True)
 
     # Get labelled training set which has subsampled classes, then subsample some indices from that
     train_dataset_labelled = subsample_classes(deepcopy(whole_training_set), include_classes=train_classes)
@@ -178,6 +182,8 @@ if __name__ == '__main__':
 
     x = get_cifar_100_datasets(None, None, split_train_val=False,
                          train_classes=range(80), prop_train_labels=0.5)
+
+    # x = get_cifar_10_datasets(None, None, split_train_val=False, prop_train_labels=0.5)
 
     print('Printing lens...')
     for k, v in x.items():

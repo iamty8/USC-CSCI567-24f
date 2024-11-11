@@ -1,5 +1,6 @@
 from data.data_utils import MergedDataset
-
+from data.nwpu import get_nwpu_datasets
+from data.mstar import get_mstar_datasets
 from data.cifar import get_cifar_10_datasets, get_cifar_100_datasets
 from data.herbarium_19 import get_herbarium_datasets
 from data.stanford_cars import get_scars_datasets
@@ -15,6 +16,8 @@ from config import osr_split_dir
 
 
 get_dataset_funcs = {
+    'nwpu': get_nwpu_datasets,
+    'mstar': get_mstar_datasets,
     'cifar10': get_cifar_10_datasets,
     'cifar100': get_cifar_100_datasets,
     'imagenet_100': get_imagenet_100_datasets,
@@ -78,7 +81,18 @@ def get_class_splits(args):
     # -------------
     # GET CLASS SPLITS
     # -------------
-    if args.dataset_name == 'cifar10':
+
+    if args.dataset_name == 'nwpu':
+        args.image_size = 256
+        args.train_classes = range(40)
+        args.unlabeled_classes = range(40, 45)
+
+    elif args.dataset_name == 'mstar':
+        args.image_size = 128
+        args.train_classes = range(5)
+        args.unlabeled_classes = range(5, 10)
+
+    elif args.dataset_name == 'cifar10':
 
         args.image_size = 32
         args.train_classes = range(5)
