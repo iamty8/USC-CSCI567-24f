@@ -1,6 +1,6 @@
 loguru
-numpy
-pandas
+numpy==1.21
+pandas==1.4.1
 scikit_learn
 scipy
 torch==1.10.0

@@ -3,7 +3,7 @@
 set -e
 set -x
 
-CUDA_VISIBLE_DEVICES=0 python train.py \
+NCCL_DEBUG=INFO NCCL_ASYNC_ERROR_HANDLING=1 NCCL_P2P_LEVEL=NVL CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --master_port=12355 train_mp.py \
     --dataset_name 'cifar100' \
     --batch_size 128 \
     --grad_from_block 11 \
