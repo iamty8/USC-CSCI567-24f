@@ -14,8 +14,8 @@ from data.get_datasets import get_datasets, get_class_splits
 from util.general_utils import AverageMeter, init_experiment
 from util.cluster_and_log_utils import log_accs_from_preds
 from config import exp_root
-from model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups
-import vision_transformer as vits
+from models.model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups
+import models.vision_transformer as vits
 
 from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter('runs/mstar_nwpu_gamma')

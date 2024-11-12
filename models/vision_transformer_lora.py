@@ -4,8 +4,8 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-from utils import trunc_normal_
-from adapter import Adapter
+from util.utils import trunc_normal_
+from models.adapter import Adapter
 from types import SimpleNamespace
 
 adapter_config = SimpleNamespace(
