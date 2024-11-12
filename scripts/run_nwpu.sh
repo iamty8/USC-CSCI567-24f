@@ -3,9 +3,10 @@
 set -e
 set -x
 
-python train_lora.py \
-    --dataset_name 'cifar100' \
-    --batch_size 128 \
+python train.py \
+    --dataset_name 'nwpu' \
+    --batch_size 256 \
+    --grad_from_block 10 \
     --epochs 200 \
     --num_workers 8 \
     --use_ssb_splits \
@@ -17,5 +18,5 @@ python train_lora.py \
     --warmup_teacher_temp 0.07 \
     --teacher_temp 0.04 \
     --warmup_teacher_temp_epochs 30 \
-    --memax_weight 4 \
-    --exp_name cifar100_lora
+    --memax_weight 2 \
+    --exp_name nwpu_test_seed0

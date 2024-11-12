@@ -15,6 +15,32 @@ from util.general_utils import AverageMeter, init_experiment
 from util.cluster_and_log_utils import log_accs_from_preds
 from config import exp_root
 from model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups
+import vision_transformer as vits
+
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter('runs/mstar_nwpu_gamma')
+
+def dino_vitb16(pretrained=True, **kwargs):
+    """
+    ViT-Base/16x16 pre-trained with DINO.
+    Achieves 76.1% top-1 accuracy on ImageNet with k-NN classification.
+    """
+    model = vits.__dict__["vit_base"](patch_size=16, num_classes=0, **kwargs)
+    if pretrained:
+        pretrained_dict = torch.hub.load_state_dict_from_url(
+            url="https://dl.fbaipublicfiles.com/dino/dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth",
+            map_location="cpu",
+        )
+        model_dict = model.state_dict()
+        # 过滤出可以加载的预训练参数
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+                           k in model_dict and model_dict[k].size() == v.size()}
+        # 更新当前模型的参数字典
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+    return model
+
+
 
 
 def train(student, train_loader, test_loader, unlabelled_train_loader, args):
@@ -111,6 +137,10 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
 
         args.logger.info('Testing on unlabelled examples in the training data...')
         all_acc, old_acc, new_acc = test(student, unlabelled_train_loader, epoch=epoch, save_name='Train ACC Unlabelled', args=args)
+
+        writer.add_scalar('Accuracy/all_acc', all_acc, epoch)
+        writer.add_scalar('Accuracy/old_acc', old_acc, epoch)
+        writer.add_scalar('Accuracy/new_acc', new_acc, epoch)
         # args.logger.info('Testing on disjoint test set...')
         # all_acc_test, old_acc_test, new_acc_test = test(student, test_loader, epoch=epoch, save_name='Test ACC', args=args)
 
@@ -176,11 +206,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='cluster', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--batch_size', default=128, type=int)
-    parser.add_argument('--num_workers', default=8, type=int)
-    parser.add_argument('--eval_funcs', nargs='+', help='Which eval functions to use', default=['v2', 'v2p'])
+    parser.add_argument('--num_workers', default=8, type=int)  # 8
+    parser.add_argument('--eval_funcs', nargs='+', help='Which eval functions to use, v2 or v2b', default=['v2', 'v2b'])
 
-    parser.add_argument('--warmup_model_dir', type=str, default=None)
-    parser.add_argument('--dataset_name', type=str, default='scars', help='options: cifar10, cifar100, imagenet_100, cub, scars, fgvc_aricraft, herbarium_19')
+    parser.add_argument('--warmup_model_dir', type=str,
+                        default=None)
+    parser.add_argument('--dataset_name', type=str, default='mstar', help='options: nwpu, mstar, cifar10, cifar100, imagenet_100, cub, scars, fgvc_aricraft, herbarium_19')
     parser.add_argument('--prop_train_labels', type=float, default=0.5)
     parser.add_argument('--use_ssb_splits', action='store_true', default=True)
 
@@ -202,20 +233,26 @@ if __name__ == "__main__":
 
     parser.add_argument('--fp16', action='store_true', default=False)
     parser.add_argument('--print_freq', default=10, type=int)
-    parser.add_argument('--exp_name', default=None, type=str)
+    parser.add_argument('--exp_name', default='mstar_test', type=str)
 
     # ----------------------
     # INIT
     # ----------------------
     args = parser.parse_args()
-    device = torch.device('cuda:0')
+    device = torch.device('cuda:3')
     args = get_class_splits(args)
+    torch.cuda.set_device('cuda:3')
 
     args.num_labeled_classes = len(args.train_classes)
     args.num_unlabeled_classes = len(args.unlabeled_classes)
 
-    init_experiment(args, runner_name=['simgcd'])
+    init_experiment(args, runner_name=['simgcd_base'])
     args.logger.info(f'Using evaluation function {args.eval_funcs[0]} to print results')
+
+    np.random.seed(0)
+    torch.manual_seed(0)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(0)
     
     torch.backends.cudnn.benchmark = True
 
@@ -225,17 +262,35 @@ if __name__ == "__main__":
     args.interpolation = 3
     args.crop_pct = 0.875
 
-    backbone = torch.hub.load('facebookresearch/dino:main', 'dino_vitb16')
-
-    if args.warmup_model_dir is not None:
-        args.logger.info(f'Loading weights from {args.warmup_model_dir}')
-        backbone.load_state_dict(torch.load(args.warmup_model_dir, map_location='cpu'))
-    
     # NOTE: Hardcoded image size as we do not finetune the entire ViT model
     args.image_size = 224
     args.feat_dim = 768
     args.num_mlp_layers = 3
     args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
+
+    backbone = torch.hub.load('facebookresearch/dino:main', 'dino_vitb16')
+    # backbone = dino_vitb16(pretrained=True)
+
+    # ----------------------
+    # PROJECTION HEAD
+    # ----------------------
+    projector = DINOHead(in_dim=args.feat_dim, out_dim=args.mlp_out_dim, nlayers=args.num_mlp_layers)
+
+    if args.warmup_model_dir is not None:
+        print(f'Loading weights from {args.warmup_model_dir}')
+        checkpoint = torch.load(args.warmup_model_dir, map_location='cpu')
+        model_state_dict = checkpoint['model']
+        backbone_state_dict = {}
+        projector_state_dict = {}
+        for key, value in model_state_dict.items():
+            if key.startswith("0."):
+                backbone_key = key[2:]
+                backbone_state_dict[backbone_key] = value
+            elif key.startswith("1."):
+                projector_key = key[2:]
+                projector_state_dict[projector_key] = value
+        backbone.load_state_dict(backbone_state_dict)
+        # projector.load_state_dict(projector_state_dict)
 
     # ----------------------
     # HOW MUCH OF BASE MODEL TO FINETUNE
@@ -243,14 +298,13 @@ if __name__ == "__main__":
     for m in backbone.parameters():
         m.requires_grad = False
 
-    # Only finetune layers from block 'args.grad_from_block' onwards
+    # 直接在原始vit后面几层微调
     for name, m in backbone.named_parameters():
         if 'block' in name:
             block_num = int(name.split('.')[1])
             if block_num >= args.grad_from_block:
                 m.requires_grad = True
 
-    
     args.logger.info('model build')
 
     # --------------------
@@ -286,10 +340,6 @@ if __name__ == "__main__":
     # test_loader_labelled = DataLoader(test_dataset, num_workers=args.num_workers,
     #                                   batch_size=256, shuffle=False, pin_memory=False)
 
-    # ----------------------
-    # PROJECTION HEAD
-    # ----------------------
-    projector = DINOHead(in_dim=args.feat_dim, out_dim=args.mlp_out_dim, nlayers=args.num_mlp_layers)
     model = nn.Sequential(backbone, projector).to(device)
 
     # ----------------------
@@ -297,3 +347,4 @@ if __name__ == "__main__":
     # ----------------------
     # train(model, train_loader, test_loader_labelled, test_loader_unlabelled, args)
     train(model, train_loader, None, test_loader_unlabelled, args)
+    writer.close()

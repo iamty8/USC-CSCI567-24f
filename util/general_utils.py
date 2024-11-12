@@ -41,12 +41,12 @@ def init_experiment(args, runner_name=None, exp_id=None):
         if args.exp_name is None:
             raise ValueError("Need to specify the experiment name")
         # Unique identifier for experiment
-        now = '{}_({:02d}.{:02d}.{}_|_'.format(args.exp_name, datetime.now().day, datetime.now().month, datetime.now().year) + \
+        now = '{}_({:02d}.{:02d}.{}_'.format(args.exp_name, datetime.now().day, datetime.now().month, datetime.now().year) + \
               datetime.now().strftime("%S.%f")[:-3] + ')'
 
         log_dir = os.path.join(root_dir, 'log', now)
         while os.path.exists(log_dir):
-            now = '({:02d}.{:02d}.{}_|_'.format(datetime.now().day, datetime.now().month, datetime.now().year) + \
+            now = '({:02d}.{:02d}.{}_'.format(datetime.now().day, datetime.now().month, datetime.now().year) + \
                   datetime.now().strftime("%S.%f")[:-3] + ')'
 
             log_dir = os.path.join(root_dir, 'log', now)

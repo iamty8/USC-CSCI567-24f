@@ -1,8 +1,10 @@
 # -----------------
 # DATASET ROOTS
 # -----------------
-cifar_10_root = '${DATASET_DIR}/cifar10'
-cifar_100_root = '${DATASET_DIR}/cifar100'
+cifar_10_root = 'datasets/cifar10'
+cifar_100_root = 'datasets/cifar100'
+nwpu_root = 'datasets/NWPU_split'
+mstar_root = 'datasets/mstar_gamma'
 cub_root = '${DATASET_DIR}/cub'
 aircraft_root = '${DATASET_DIR}/fgvc-aircraft-2013b'
 car_root = '${DATASET_DIR}/cars'

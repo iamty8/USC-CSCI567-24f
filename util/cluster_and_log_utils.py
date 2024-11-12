@@ -4,6 +4,30 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment as linear_assignment
 
 
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+from scipy.optimize import linear_sum_assignment as linear_assignment
+
+def plot_confusion_matrix(cm, class_labels, save_path):
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Confusion Matrix')
+    plt.colorbar()
+    tick_marks = np.arange(len(class_labels))
+    plt.xticks(tick_marks, class_labels, rotation=45)
+    plt.yticks(tick_marks, class_labels)
+
+    thresh = cm.max() / 2.
+    for i, j in np.ndindex(cm.shape):
+        plt.text(j, i, cm[i, j], horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.savefig(save_path)  # Save the figure as a file
+    plt.close()  # Close the plot to free up memory
+
 def all_sum_item(item):
     item = torch.tensor(item).cuda()
     dist.all_reduce(item)
@@ -118,6 +142,10 @@ def split_cluster_acc_v2_balanced(y_true, y_pred, mask):
     for idx, i in enumerate(new_classes_gt):
         new_acc[idx] += w[ind_map[i], i]
         total_new_instances[idx] += sum(w[:, i])
+
+    # cm = confusion_matrix(y_true, y_pred)
+    # class_labels = list(set(y_true))
+    # plot_confusion_matrix(cm, class_labels, 'confusion.png')
 
     try:
         if dist.get_world_size() > 0:
