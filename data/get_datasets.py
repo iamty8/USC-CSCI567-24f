@@ -1,6 +1,6 @@
 from data.data_utils import MergedDataset
-from data.nwpu import get_nwpu_datasets
-from data.mstar import get_mstar_datasets
+# from data.nwpu import get_nwpu_datasets
+# from data.mstar import get_mstar_datasets
 from data.cifar import get_cifar_10_datasets, get_cifar_100_datasets
 from data.herbarium_19 import get_herbarium_datasets
 from data.stanford_cars import get_scars_datasets
@@ -16,8 +16,8 @@ from config import osr_split_dir
 
 
 get_dataset_funcs = {
-    'nwpu': get_nwpu_datasets,
-    'mstar': get_mstar_datasets,
+    # 'nwpu': get_nwpu_datasets,
+    # 'mstar': get_mstar_datasets,
     'cifar10': get_cifar_10_datasets,
     'cifar100': get_cifar_100_datasets,
     'imagenet_100': get_imagenet_100_datasets,

@@ -24,12 +24,15 @@ import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 
-def dino_vitb16(pretrained=True, **kwargs):
+def dino_vitb16(pretrained=True, adapter_config=None,**kwargs):
     """
     ViT-Base/16x16 pre-trained with DINO.
     Achieves 76.1% top-1 accuracy on ImageNet with k-NN classification.
     """
-    model = vits.__dict__["vit_base"](patch_size=16, num_classes=0, **kwargs)
+    if adapter_config is None:
+        model = vits.__dict__["vit_base"](patch_size=16, num_classes=0, **kwargs)
+    else:
+        model = vits.__dict__["vit_base"](patch_size=16, adapter_config=adapter_config, num_classes=0, **kwargs)
     if pretrained:
         pretrained_dict = torch.hub.load_state_dict_from_url(
             url="https://dl.fbaipublicfiles.com/dino/dino_vitbase16_pretrain/dino_vitbase16_pretrain.pth",
@@ -239,6 +242,9 @@ if __name__ == "__main__":
     parser.add_argument('--warmup_teacher_temp_epochs', default=30, type=int,
                         help='Number of warmup epochs for the teacher temperature.')
 
+    # LoRA setup
+    parser.add_argument('--lora_rank', type=int, default=4, help="The rank of LoRA")
+
     parser.add_argument('--fp16', action='store_true', default=False)
     parser.add_argument('--print_freq', default=10, type=int)
     parser.add_argument('--exp_name', default='cifar100_lora', type=str)
@@ -248,6 +254,11 @@ if __name__ == "__main__":
     # ----------------------
     args = parser.parse_args()
     args = get_class_splits(args)
+
+    # Setting the rank of LoRA
+    adapter_config_dict = vits.adapter_config_default_dict
+    adapter_config_dict['ffn_num'] = args.lora_rank
+    adapter_config = vits.SimpleNamespace(**adapter_config_dict)
 
     device = torch.device('cuda:0')
     torch.cuda.set_device('cuda:0')
@@ -278,7 +289,7 @@ if __name__ == "__main__":
     args.mlp_out_dim = args.num_labeled_classes + args.num_unlabeled_classes
 
     # backbone = torch.hub.load('facebookresearch/dino:main', 'dino_vitb16')
-    backbone = dino_vitb16(pretrained=True)
+    backbone = dino_vitb16(pretrained=True, adapter_config=adapter_config)
 
     # ----------------------
     # PROJECTION HEAD

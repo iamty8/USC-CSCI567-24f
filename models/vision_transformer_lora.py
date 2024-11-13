@@ -8,20 +8,23 @@ from util.utils import trunc_normal_
 from models.adapter import Adapter
 from types import SimpleNamespace
 
-adapter_config = SimpleNamespace(
-    # AdaptFormer
-    SEadapter=False,
-    adaptmix=False,
-    ffn_adapt=True,
-    ffn_option="parallel",
-    ffn_adapter_layernorm_option="none",
-    ffn_adapter_init_option="lora",
-    ffn_adapter_scalar="0.1",
-    ffn_num=4,
-    d_model=768,
-    # VPT related
-    vpt_on=False,
-    vpt_num=1
+
+adapter_config_default_dict = {
+    'SEadapter': False,
+    'adaptmix': False,
+    'ffn_adapt': True,
+    'ffn_option': "parallel",
+    'ffn_adapter_layernorm_option': "none",
+    'ffn_adapter_init_option': "lora",
+    'ffn_adapter_scalar': "0.1",
+    'ffn_num': 4,
+    'd_model': 768,
+    'vpt_on': False,
+    'vpt_num': 1
+}
+
+adapter_config_default = SimpleNamespace(
+    **adapter_config_default_dict
 )
 
 
@@ -269,7 +272,9 @@ def vit_small(patch_size=16, **kwargs):
     return model
 
 
-def vit_base(patch_size=16, **kwargs):
+def vit_base(patch_size=16, adapter_config=None, **kwargs):
+    if adapter_config is None:
+        adapter_config = adapter_config_default
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), adapter_config=adapter_config, **kwargs)

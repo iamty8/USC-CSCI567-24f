@@ -144,7 +144,7 @@ def get_cifar_100_datasets(train_transform, test_transform, train_classes=range(
     np.random.seed(seed)
 
     # Init entire training set
-    whole_training_set = CustomCIFAR100(root=cifar_100_root, transform=train_transform, train=True)
+    whole_training_set = CustomCIFAR100(root=cifar_100_root, transform=train_transform, train=True, download=True)
 
     # Get labelled training set which has subsampled classes, then subsample some indices from that
     train_dataset_labelled = subsample_classes(deepcopy(whole_training_set), include_classes=train_classes)
