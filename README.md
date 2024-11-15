@@ -1,10 +1,33 @@
 # A CSCI-567 Project on Novel Class Discovery
 
-
 Novel Class Discovery is a machine learning task where the goal is to identify new, unseen classes from unlabeled data, using knowledge from a set of known, labeled classes. The challenge is to learn effective representations that can generalize to the novel classes, leveraging the similarities between known and unknown classes, without direct supervision for the new categories.
 
 While image classification works well and has an extremely high performance on lots of current popular datasets, novel class discovery remains challenging for these same datasets and the classification performance significantly when it comes to unknown classes.
 
+## Progress (updated on 2024.11.14)
+
+### Target
+
+- Due: 2024.12.13
+- Support finetuning
+- Beat the original model on acc on all / acc on new / ...
+
+### Completed items
+
+- Model deployment on vast
+- Code maintenance on GitHub
+- LoRA on Vit
+- Multiprocess training
+- LoRA rank argument
+- Visulization of traning with TensorBoard
+
+### TODOs
+
+- [ ] Dataset and Dataloader implementation on new datasets
+- [ ] Train model on new datasets and evaluate
+- [ ] Train model on new datasets with finetuning and evaluate
+- [ ] Apply focal loss to resovle the inbalance
+- [ ] Parameter tuning for model on LoRA
 
 ## Running
 
