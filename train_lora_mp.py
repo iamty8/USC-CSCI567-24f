@@ -105,9 +105,15 @@ def main(args):
             args.logger.info(f'Loading weights from {args.warmup_model_dir}')
         checkpoint = torch.load(args.warmup_model_dir, map_location='cpu')
         model_state_dict = checkpoint['model']
-        backbone_state_dict = {key[2:]: value for key, value in model_state_dict.items() if key.startswith("0.")}
-        # projector_state_dict = {key[2:]: value for key, value in model_state_dict.items() if key.startswith("1.")}
-
+        backbone_state_dict = {}
+        projector_state_dict = {}
+        for key, value in model_state_dict.items():
+            if key.startswith("0."):
+                backbone_key = key[2:]
+                backbone_state_dict[backbone_key] = value
+            elif key.startswith("1."):
+                projector_key = key[2:]
+                projector_state_dict[projector_key] = value
         backbone.load_state_dict(backbone_state_dict, strict=False)
     
     # NOTE: Hardcoded image size as we do not finetune the entire ViT model
@@ -122,12 +128,9 @@ def main(args):
     for m in backbone.parameters():
         m.requires_grad = False
 
-    # Only finetune layers from block 'args.grad_from_block' onwards
-    for name, m in backbone.named_parameters():
-        if 'block' in name:
-            block_num = int(name.split('.')[1])
-            if block_num >= args.grad_from_block:
-                m.requires_grad = True
+    for name, param in backbone.named_parameters():
+        if 'adapter' in name:
+            param.requires_grad = True
 
     if dist.get_rank() == 0:
         args.logger.info('model build')
@@ -171,23 +174,6 @@ def main(args):
     # PROJECTION HEAD
     # ----------------------
     projector = DINOHead(in_dim=args.feat_dim, out_dim=args.mlp_out_dim, nlayers=args.num_mlp_layers)
-
-    # ----------------------
-    # HOW MUCH OF BASE MODEL TO FINETUNE
-    # ----------------------
-    for m in backbone.parameters():
-        m.requires_grad = False
-
-    # 直接在原始vit后面几层微调
-    # for name, m in backbone.named_parameters():
-    #     if 'block' in name:
-    #         block_num = int(name.split('.')[1])
-    #         if block_num >= args.grad_from_block:
-    #             m.requires_grad = True
-
-    for name, param in backbone.named_parameters():
-        if 'adapter' in name:
-            param.requires_grad = True
 
     # ----------------------
     # Multiprocessing
