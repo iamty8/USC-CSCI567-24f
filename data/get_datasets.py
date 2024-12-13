@@ -1,12 +1,12 @@
 from data.data_utils import MergedDataset
-# from data.nwpu import get_nwpu_datasets
-# from data.mstar import get_mstar_datasets
+
 from data.cifar import get_cifar_10_datasets, get_cifar_100_datasets
 from data.herbarium_19 import get_herbarium_datasets
 from data.stanford_cars import get_scars_datasets
 from data.imagenet import get_imagenet_100_datasets, get_imagenet_1k_datasets
 from data.cub import get_cub_datasets
 from data.fgvc_aircraft import get_aircraft_datasets
+from data.odir import get_odir_dataset
 
 from copy import deepcopy
 import pickle
@@ -16,8 +16,6 @@ from config import osr_split_dir
 
 
 get_dataset_funcs = {
-    # 'nwpu': get_nwpu_datasets,
-    # 'mstar': get_mstar_datasets,
     'cifar10': get_cifar_10_datasets,
     'cifar100': get_cifar_100_datasets,
     'imagenet_100': get_imagenet_100_datasets,
@@ -25,7 +23,8 @@ get_dataset_funcs = {
     'herbarium_19': get_herbarium_datasets,
     'cub': get_cub_datasets,
     'aircraft': get_aircraft_datasets,
-    'scars': get_scars_datasets
+    'scars': get_scars_datasets,
+    'ODIR_5k' : get_odir_dataset
 }
 
 
@@ -81,18 +80,7 @@ def get_class_splits(args):
     # -------------
     # GET CLASS SPLITS
     # -------------
-
-    if args.dataset_name == 'nwpu':
-        args.image_size = 256
-        args.train_classes = range(40)
-        args.unlabeled_classes = range(40, 45)
-
-    elif args.dataset_name == 'mstar':
-        args.image_size = 128
-        args.train_classes = range(5)
-        args.unlabeled_classes = range(5, 10)
-
-    elif args.dataset_name == 'cifar10':
+    if args.dataset_name == 'cifar10':
 
         args.image_size = 32
         args.train_classes = range(5)
@@ -182,6 +170,12 @@ def get_class_splits(args):
 
             args.train_classes = range(100)
             args.unlabeled_classes = range(100, 200)
+
+    elif args.dataset_name == 'ODIR_5k':
+        # 针对 ODIR_5k 数据集的设置
+        args.image_size = 224
+        args.train_classes = range(2,8)  # 假设 ODIR_5k 有 8 个类别，从 0 到 7
+        args.unlabeled_classes = range(0,2)
 
     else:
 

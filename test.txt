@@ -1,0 +1,32 @@
+# 创造环境
+
+conda create -n GCD python=3.8
+
+conda activate SIMGCD
+pip install -r requirements.txt
+
+
+python train.py --dataset_name cifar100 --batch_size 128 --grad_from_block 11 --epochs 200 --num_workers 0 --use_ssb_splits --sup_weight 0.35 --weight_decay 5e-5 --transform imagenet --lr 0.1 --eval_funcs v2 --warmup_teacher_temp 0.07 --teacher_temp 0.04 --warmup_teacher_temp_epochs 30 --memax_weight 4 --exp_name cifar100_simgcd > out.txt
+
+nohup python train.py --dataset_name ODIR_5k --batch_size 64 --grad_from_block 0 --epochs 200 --num_workers 0 --use_ssb_splits --sup_weight 0.35 --weight_decay 5e-5 --transform imagenet --lr 0.01 --eval_funcs v2b --warmup_teacher_temp 0.07 --teacher_temp 0.04 --warmup_teacher_temp_epochs 30 --memax_weight 4 --exp_name odir5k_simgcd &
+
+
+ssh-keygen -t rsa -b 4096 -C "alkalisoda@sjtu.edu.cn"
+ssh-keygen -t rsa -b 4096 -C "qwu49595@usc.edu"
+
+cat ~/.ssh/id_rsa.pub
+
+ssh -T git@github.com
+git clone git@github.com:iamty8/USC-CSCI567-24f.git
+
+git init
+
+git remote add origin https://github.com/alkalisoda/USC-CSCI567-24f.git
+
+git push origin odir-5k-branch --force
+
+git clone -b odir-5k-branch git@github.com:iamty8/USC-CSCI567-24f.git
+
+git config user.name alkalisoda
+git config user.email alkalisoda@ssjtu.edu.cn
+

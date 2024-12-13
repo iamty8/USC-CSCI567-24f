@@ -2,13 +2,14 @@ from torchvision import transforms
 
 import torch
 
-
 def get_transform(transform_type='imagenet', image_size=32, args=None):
 
     if transform_type == 'imagenet':
 
-        mean = (0.485, 0.456, 0.406)
-        std = (0.229, 0.224, 0.225)
+        # mean = (0.485, 0.456, 0.406)
+        mean = (0.1551, 0.2811, 0.4367)
+        # std = (0.229, 0.224, 0.225)
+        std = (0.1029, 0.1745, 0.2569)
         interpolation = args.interpolation
         crop_pct = args.crop_pct
 
