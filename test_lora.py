@@ -181,7 +181,7 @@ def test(model, test_loader, epoch, save_name, args):
         images = images.cuda(non_blocking=True)
         with torch.no_grad():
             _, logits = model(images)
-            preds.append(logits.argmax(1).cpu().numpy())
+            preds.append((logits).argmax(1).cpu().numpy())
             targets.append(label.cpu().numpy())
             mask = np.append(mask,
                              np.array([True if x.item() in range(len(args.train_classes)) else False for x in label]))
@@ -201,13 +201,13 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--num_workers', default=8, type=int)  # 8
     # parser.add_argument('--eval_funcs', nargs='+', help='Which eval functions to use, v2 or v2b', default=['v2', 'v2b'])
-    parser.add_argument('--eval_funcs', help='Which eval functions to use, v2 or v2b', default=['v2b'])
+    parser.add_argument('--eval_funcs', help='Which eval functions to use, v2 or v2b', default=['v2'])
 
     # parser.add_argument('--warmup_model_dir', type=str, default='/data/tyw/code/jhy/SimGCD-main/dev_outputs/simgcd/log/mstar10_best/checkpoints/model.pt')
     parser.add_argument('--warmup_model_dir', type=str,
-                        default='/data/tyw/code/jhy/SimGCD-main/dev_outputs/lora_test/log/mstar_nwpu_lora_gamma_test1/checkpoints/model.pt')
+                        default='/root/USC-CSCI567-24f/dev_outputs/lora_mp_test/log/cifar100_lora_mp/checkpoints/model.pt')
 
-    parser.add_argument('--dataset_name', type=str, default='mstar',
+    parser.add_argument('--dataset_name', type=str, default='cifar100',
                         help='options: nwpu, mstar, cifar10, cifar100, imagenet_100, cub, scars, fgvc_aricraft, herbarium_19')
     parser.add_argument('--prop_train_labels', type=float, default=0.5)
     parser.add_argument('--use_ssb_splits', action='store_true', default=True)
@@ -239,9 +239,9 @@ if __name__ == "__main__":
     # INIT
     # ----------------------
     args = parser.parse_args()
-    device = torch.device('cuda:3')
+    device = torch.device('cuda:0')
     args = get_class_splits(args)
-    torch.cuda.set_device('cuda:3')
+    torch.cuda.set_device('cuda:0')
 
     args.num_labeled_classes = len(args.train_classes)
     args.num_unlabeled_classes = len(args.unlabeled_classes)
@@ -284,14 +284,19 @@ if __name__ == "__main__":
         print(f'Loading weights from {args.warmup_model_dir}')
         checkpoint = torch.load(args.warmup_model_dir, map_location='cpu')
         model_state_dict = checkpoint['model']
+        
+        print("Model state_dict keys:")
+        for key in model_state_dict.keys():
+            print(key)
+        
         backbone_state_dict = {}
         projector_state_dict = {}
         for key, value in model_state_dict.items():
-            if key.startswith("0."):
-                backbone_key = key[2:]
+            if key.startswith("module.0."):
+                backbone_key = key[len("module.0."):]
                 backbone_state_dict[backbone_key] = value
-            elif key.startswith("1."):
-                projector_key = key[2:]
+            elif key.startswith("module.1."):
+                projector_key = key[len("module.1."):]
                 projector_state_dict[projector_key] = value
         backbone.load_state_dict(backbone_state_dict)
         projector.load_state_dict(projector_state_dict)
@@ -313,9 +318,9 @@ if __name__ == "__main__":
     # --------------------
     # DATALOADERS
     # --------------------
-    test_loader = DataLoader(test_dataset, num_workers=args.num_workers, batch_size=256, shuffle=False, pin_memory=False)
-    # test_loader = DataLoader(unlabelled_train_examples_test, num_workers=args.num_workers,
-    #                                     batch_size=256, shuffle=False, pin_memory=False)
+    # test_loader = DataLoader(test_dataset, num_workers=args.num_workers, batch_size=256, shuffle=False, pin_memory=False)
+    test_loader = DataLoader(unlabelled_train_examples_test, num_workers=args.num_workers,
+                                         batch_size=256, shuffle=False, pin_memory=False)
 
     model = nn.Sequential(backbone, projector).to(device)
 
